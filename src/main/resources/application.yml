@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/testbatch
+    username: batch
+    password: batch
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  batch:
+    jdbc:
+      initialize-schema: always
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    baseline-on-migrate: true

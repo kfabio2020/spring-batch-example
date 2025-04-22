@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: testbatch
+      POSTGRES_USER: batch
+      POSTGRES_PASSWORD: batch
+    ports:
+      - '5432:5432'
