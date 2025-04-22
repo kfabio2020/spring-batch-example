@@ -25,7 +25,7 @@ public class SpringBatchConfig {
 
     private final SuroitCoursesRepository suroitCoursesRepository;
     private final SuroitCoursesMapper suroitCoursesMapper;
-    private final String fileName = "suroit-courses.csv";
+    private final String fileName = "suroit_courses_oth.csv";
 
     public SpringBatchConfig(SuroitCoursesRepository suroitCoursesRepository, SuroitCoursesMapper suroitCoursesMapper) {
         this.suroitCoursesRepository = suroitCoursesRepository;
@@ -42,7 +42,9 @@ public class SpringBatchConfig {
 
     @Bean
     public TaskExecutor taskExecutor() {
-        return new SimpleAsyncTaskExecutor("spring_batch");
+        SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor("spring_batch");
+        executor.setConcurrencyLimit(5); // nombre de threads
+        return executor;
     }
 
     //Avec Mutlithread
