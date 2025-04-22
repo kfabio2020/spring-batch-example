@@ -108,9 +108,8 @@ public class SpringBatchConfig {
     @Bean
     public ItemProcessor<SuroitCoursesDTO,SuroitCourses> processor(){
         return dto -> {
-            // On vérifie si le DTO est vide (tous les champs null ou vides)
             if (dto == null || isDtoEmpty(dto)) {
-                return null; // Skipped by Spring Batch
+                return null;
             }
             return suroitCoursesMapper.from(dto);
         };
@@ -118,7 +117,6 @@ public class SpringBatchConfig {
 
     private boolean isDtoEmpty(SuroitCoursesDTO dto) {
         return dto.getCodeStifLigne() == null || dto.getCodeStifLigne().isBlank();
-        // Ajoute d'autres vérifications si nécessaire
     }
 
     @Bean

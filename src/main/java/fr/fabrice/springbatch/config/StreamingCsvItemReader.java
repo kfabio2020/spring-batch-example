@@ -59,16 +59,10 @@ public class StreamingCsvItemReader<T> implements ItemReader<T>, InitializingBea
 
     @Override
     public T read() {
-        if (iterator == null) {
-            System.out.println("❌ Iterator is null");
-            return null;
-        }
-        if (!iterator.hasNext()) {
-            System.out.println("✅ No more elements in iterator");
+        if (iterator == null || !iterator.hasNext()) {
             return null;
         }
         T item = iterator.next();
-        System.out.println("✅ Read item: " + item);
         return item;
     }
 }
