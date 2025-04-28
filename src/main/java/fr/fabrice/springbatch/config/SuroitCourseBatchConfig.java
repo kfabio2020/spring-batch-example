@@ -3,7 +3,6 @@ package fr.fabrice.springbatch.config;
 
 import fr.fabrice.springbatch.dto.SuroitCoursesDTO;
 import fr.fabrice.springbatch.entities.SuroitCourses;
-import fr.fabrice.springbatch.mappers.SuroitCoursesMapper;
 import fr.fabrice.springbatch.repository.SuroitCoursesRepository;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -11,9 +10,9 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.batch.item.support.ClassifierCompositeItemProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
@@ -21,22 +20,25 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
-public class SpringBatchConfig {
+public class SuroitCourseBatchConfig {
 
     private final SuroitCoursesRepository suroitCoursesRepository;
-    private final SuroitCoursesMapper suroitCoursesMapper;
     private final String fileName = "suroit_courses_oth.csv";
 
-    public SpringBatchConfig(SuroitCoursesRepository suroitCoursesRepository, SuroitCoursesMapper suroitCoursesMapper) {
+    public SuroitCourseBatchConfig(SuroitCoursesRepository suroitCoursesRepository) {
         this.suroitCoursesRepository = suroitCoursesRepository;
-        this.suroitCoursesMapper = suroitCoursesMapper;
     }
 
     @Bean
-    public Job importerSuroitCoursesJob(JobRepository jobRepository, Step step){
-        return new JobBuilder("importerSuroitCoursesJob",jobRepository)
+    public Job importerSuroitCoursesJob(JobRepository jobRepository, Step step, Step skipStep,
+                                        FileTypeDecider fileTypeDecider) {
+        return new JobBuilder("importerSuroitCoursesJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(step)
+                .start(fileTypeDecider)
+                .on("CSV").to(step)
+                .from(fileTypeDecider)
+                .on("UNKNOWN").to(skipStep)
+                .end()
                 .build();
     }
 
@@ -49,13 +51,23 @@ public class SpringBatchConfig {
 
     //Avec Mutlithread
     @Bean
-    public Step step(JobRepository jobRepository, PlatformTransactionManager transactionManager) throws Exception {
+    public Step step(JobRepository jobRepository, PlatformTransactionManager transactionManager, ClassifierCompositeItemProcessor<SuroitCoursesDTO, SuroitCourses> compositeProcessor) throws Exception {
         return new StepBuilder("importerSuroitCoursesStep", jobRepository)
-                .<SuroitCoursesDTO, SuroitCourses>chunk(10000,transactionManager)
+                .<SuroitCoursesDTO, SuroitCourses>chunk(10000, transactionManager)
                 .reader(itemReader())
-                .processor(processor())
+                .processor(compositeProcessor)
                 .writer(itemWriter())
                 .taskExecutor(taskExecutor())
+                .build();
+    }
+
+    @Bean
+    public Step skipStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+        return new StepBuilder("skipStep", jobRepository)
+                .tasklet((contribution, chunkContext) -> {
+                    System.out.println("Fichier non reconnu. Job stoppé.");
+                    return org.springframework.batch.repeat.RepeatStatus.FINISHED;
+                }, transactionManager)
                 .build();
     }
 
@@ -100,23 +112,7 @@ public class SpringBatchConfig {
 
     @Bean
     public ItemReader<SuroitCoursesDTO> itemReader() {
-        return new StreamingCsvItemReader<>("src/main/resources/"+fileName, SuroitCoursesDTO.class);
-    }
-
-
-
-    @Bean
-    public ItemProcessor<SuroitCoursesDTO,SuroitCourses> processor(){
-        return dto -> {
-            if (dto == null || isDtoEmpty(dto)) {
-                return null;
-            }
-            return suroitCoursesMapper.from(dto);
-        };
-    }
-
-    private boolean isDtoEmpty(SuroitCoursesDTO dto) {
-        return dto.getCodeStifLigne() == null || dto.getCodeStifLigne().isBlank();
+        return new StreamingCsvItemReader<>("src/main/resources/" + fileName, SuroitCoursesDTO.class);
     }
 
     @Bean
